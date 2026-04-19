@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>RemindMe – Task Reminder App</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --card: #1a1d27;
+      --card2: #21253a;
+      --border: #2e3250;
+      --accent: #6c63ff;
+      --accent2: #8b85ff;
+      --text: #e8eaf6;
+      --muted: #8892b0;
+      --danger: #ff5370;
+      --success: #64ffda;
+      --warn: #ffb74d;
+      --low: #64ffda;
+      --med: #ffb74d;
+      --high: #ff5370;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ─── AUTH SCREENS ─── */
+    #auth-screen {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .auth-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 40px;
+      width: 100%;
+      max-width: 420px;
+    }
+
+    .auth-box h1 {
+      font-size: 26px;
+      margin-bottom: 6px;
+      background: linear-gradient(135deg, #6c63ff, #8b85ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .auth-box p.sub { color: var(--muted); font-size: 14px; margin-bottom: 28px; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+
+    input, textarea, select {
+      width: 100%;
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 14px;
+      padding: 11px 14px;
+      outline: none;
+      transition: border-color .2s;
+      font-family: inherit;
+    }
+    input:focus, textarea:focus, select:focus { border-color: var(--accent); }
+
+    .btn {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .2s, transform .1s;
+    }
+    .btn:hover { opacity: .9; }
+    .btn:active { transform: scale(.98); }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-danger  { background: var(--danger); color: #fff; }
+    .btn-success { background: #1db982; color: #fff; }
+
+    .auth-switch { text-align: center; margin-top: 18px; font-size: 14px; color: var(--muted); }
+    .auth-switch a { color: var(--accent2); cursor: pointer; text-decoration: none; }
+    .auth-switch a:hover { text-decoration: underline; }
+
+    .error-msg { color: var(--danger); font-size: 13px; margin-top: 10px; text-align: center; }
+
+    /* ─── MAIN APP ─── */
+    #app-screen { display: none; }
+
+    nav {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .nav-brand {
+      font-size: 20px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #6c63ff, #8b85ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .nav-right { display: flex; align-items: center; gap: 14px; }
+    .nav-user { font-size: 14px; color: var(--muted); }
+
+    .btn-sm {
+      padding: 7px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: opacity .2s;
+    }
+    .btn-sm:hover { opacity: .85; }
+    .btn-sm.outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .btn-sm.accent  { background: var(--accent); color: #fff; }
+    .btn-sm.red     { background: var(--danger); color: #fff; }
+
+    main { max-width: 960px; margin: 0 auto; padding: 32px 20px; }
+
+    /* ─── STATS ROW ─── */
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 28px; }
+
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+    }
+    .stat-card .label { font-size: 12px; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .5px; }
+    .stat-card .value { font-size: 28px; font-weight: 700; }
+    .stat-card.total  .value { color: var(--accent2); }
+    .stat-card.pending .value { color: var(--warn); }
+    .stat-card.done   .value { color: var(--success); }
+    .stat-card.high   .value { color: var(--high); }
+
+    /* ─── FILTER & ADD ─── */
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+      align-items: center;
+    }
+
+    .filter-btn {
+      padding: 7px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      transition: all .2s;
+    }
+    .filter-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    .spacer { flex: 1; }
+
+    /* ─── REMINDER CARDS ─── */
+    .reminder-list { display: flex; flex-direction: column; gap: 12px; }
+
+    .reminder-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px 20px;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      transition: border-color .2s;
+      position: relative;
+    }
+    .reminder-card:hover { border-color: var(--accent); }
+    .reminder-card.done { opacity: .55; }
+
+    .priority-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-top: 5px;
+      flex-shrink: 0;
+    }
+    .priority-dot.LOW    { background: var(--low); }
+    .priority-dot.MEDIUM { background: var(--med); }
+    .priority-dot.HIGH   { background: var(--high); box-shadow: 0 0 6px var(--high); }
+
+    .reminder-body { flex: 1; min-width: 0; }
+    .reminder-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .reminder-title.done { text-decoration: line-through; color: var(--muted); }
+    .reminder-desc { font-size: 13px; color: var(--muted); margin-bottom: 8px; line-height: 1.4; }
+
+    .reminder-meta { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+    .badge {
+      font-size: 11px;
+      padding: 3px 9px;
+      border-radius: 20px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+    }
+    .badge.LOW    { background: rgba(100,255,218,.12); color: var(--low); }
+    .badge.MEDIUM { background: rgba(255,183,77,.12); color: var(--med); }
+    .badge.HIGH   { background: rgba(255,83,112,.12); color: var(--high); }
+    .badge.PENDING { background: rgba(108,99,255,.12); color: var(--accent2); }
+    .badge.DONE    { background: rgba(100,255,218,.12); color: var(--success); }
+
+    .reminder-time { font-size: 12px; color: var(--muted); }
+    .reminder-time.overdue { color: var(--danger); font-weight: 600; }
+
+    .reminder-actions { display: flex; gap: 8px; flex-shrink: 0; align-items: flex-start; }
+
+    /* ─── MODAL ─── */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.65);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 200;
+      padding: 20px;
+    }
+    .overlay.hidden { display: none; }
+
+    .modal {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      width: 100%;
+      max-width: 480px;
+    }
+    .modal h2 { font-size: 18px; margin-bottom: 22px; }
+
+    .modal-footer { display: flex; gap: 10px; margin-top: 24px; }
+    .modal-footer .btn { flex: 1; }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+    .empty-state .icon { font-size: 48px; margin-bottom: 14px; }
+    .empty-state p { font-size: 15px; }
+
+    /* ─── LOADING ─── */
+    .spinner {
+      display: inline-block;
+      width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,.2);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<!-- ─── AUTH SCREEN ─── -->
+<div id="auth-screen">
+  <div class="auth-box">
+
+    <!-- LOGIN -->
+    <div id="login-form">
+      <h1>RemindMe</h1>
+      <p class="sub">Sign in to manage your reminders</p>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="login-email" placeholder="you@example.com" />
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="login-pass" placeholder="••••••••" />
+      </div>
+      <button class="btn btn-primary" onclick="login()">Sign In</button>
+      <div id="login-error" class="error-msg"></div>
+      <div class="auth-switch">Don't have an account? <a onclick="showRegister()">Register</a></div>
+    </div>
+
+    <!-- REGISTER -->
+    <div id="register-form" style="display:none">
+      <h1>Create Account</h1>
+      <p class="sub">Start managing your tasks today</p>
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" id="reg-username" placeholder="yourname" />
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="reg-email" placeholder="you@example.com" />
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="reg-pass" placeholder="Min 6 characters" />
+      </div>
+      <button class="btn btn-primary" onclick="register()">Create Account</button>
+      <div id="reg-error" class="error-msg"></div>
+      <div class="auth-switch">Already have an account? <a onclick="showLogin()">Sign in</a></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ─── MAIN APP ─── -->
+<div id="app-screen">
+  <nav>
+    <span class="nav-brand">⏰ RemindMe</span>
+    <div class="nav-right">
+      <span class="nav-user" id="nav-username"></span>
+      <button class="btn-sm outline" onclick="showAddModal()">+ New Reminder</button>
+      <button class="btn-sm red" onclick="logout()">Logout</button>
+    </div>
+  </nav>
+
+  <main>
+    <!-- Stats -->
+    <div class="stats">
+      <div class="stat-card total">
+        <div class="label">Total</div>
+        <div class="value" id="stat-total">0</div>
+      </div>
+      <div class="stat-card pending">
+        <div class="label">Pending</div>
+        <div class="value" id="stat-pending">0</div>
+      </div>
+      <div class="stat-card done">
+        <div class="label">Completed</div>
+        <div class="value" id="stat-done">0</div>
+      </div>
+      <div class="stat-card high">
+        <div class="label">High Priority</div>
+        <div class="value" id="stat-high">0</div>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <button class="filter-btn active" onclick="setFilter('ALL', this)">All</button>
+      <button class="filter-btn" onclick="setFilter('PENDING', this)">Pending</button>
+      <button class="filter-btn" onclick="setFilter('DONE', this)">Done</button>
+      <button class="filter-btn" onclick="setFilter('HIGH', this)">High Priority</button>
+      <div class="spacer"></div>
+      <button class="btn-sm accent" onclick="showAddModal()">+ Add Reminder</button>
+    </div>
+
+    <!-- Reminders -->
+    <div class="reminder-list" id="reminder-list">
+      <div class="empty-state">
+        <div class="icon">📋</div>
+        <p>Loading your reminders...</p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ─── ADD / EDIT MODAL ─── -->
+<div class="overlay hidden" id="modal-overlay">
+  <div class="modal">
+    <h2 id="modal-title">New Reminder</h2>
+    <div class="form-group">
+      <label>Title *</label>
+      <input type="text" id="m-title" placeholder="e.g. Submit assignment" />
+    </div>
+    <div class="form-group">
+      <label>Description</label>
+      <textarea id="m-desc" rows="3" placeholder="Details, notes, steps..."></textarea>
+    </div>
+    <div class="form-group">
+      <label>Date & Time *</label>
+      <input type="datetime-local" id="m-time" />
+    </div>
+    <div class="form-group">
+      <label>Priority</label>
+      <select id="m-priority">
+        <option value="LOW">🟢 Low</option>
+        <option value="MEDIUM" selected>🟡 Medium</option>
+        <option value="HIGH">🔴 High</option>
+      </select>
+    </div>
+    <div id="modal-error" class="error-msg"></div>
+    <div class="modal-footer">
+      <button class="btn" style="background:var(--card2);color:var(--text)" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="modal-save-btn" onclick="saveReminder()">Save Reminder</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const API = '/api';
+  let token = localStorage.getItem('token') || '';
+  let username = localStorage.getItem('username') || '';
+  let reminders = [];
+  let editingId = null;
+  let currentFilter = 'ALL';
+
+  // ─── INIT ───
+  window.onload = () => {
+    if (token) showApp();
+    else showAuth();
+  };
+
+  function showAuth() {
+    document.getElementById('auth-screen').style.display = 'flex';
+    document.getElementById('app-screen').style.display = 'none';
+  }
+
+  function showApp() {
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('app-screen').style.display = 'block';
+    document.getElementById('nav-username').textContent = '👤 ' + username;
+    loadReminders();
+  }
+
+  function showRegister() {
+    document.getElementById('login-form').style.display = 'none';
+    document.getElementById('register-form').style.display = 'block';
+  }
+
+  function showLogin() {
+    document.getElementById('login-form').style.display = 'block';
+    document.getElementById('register-form').style.display = 'none';
+  }
+
+  // ─── AUTH ───
+  async function login() {
+    const email    = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-pass').value;
+    document.getElementById('login-error').textContent = '';
+
+    if (!email || !password) {
+      document.getElementById('login-error').textContent = 'Please fill all fields';
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Login failed');
+      token = data.token;
+      username = data.username;
+      localStorage.setItem('token', token);
+      localStorage.setItem('username', username);
+      showApp();
+    } catch (e) {
+      document.getElementById('login-error').textContent = e.message;
+    }
+  }
+
+  async function register() {
+    const username_  = document.getElementById('reg-username').value.trim();
+    const email      = document.getElementById('reg-email').value.trim();
+    const password   = document.getElementById('reg-pass').value;
+    document.getElementById('reg-error').textContent = '';
+
+    if (!username_ || !email || !password) {
+      document.getElementById('reg-error').textContent = 'Please fill all fields';
+      return;
+    }
+    if (password.length < 6) {
+      document.getElementById('reg-error').textContent = 'Password must be at least 6 characters';
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username_, email, password })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Registration failed');
+      token = data.token;
+      username = data.username;
+      localStorage.setItem('token', token);
+      localStorage.setItem('username', username);
+      showApp();
+    } catch (e) {
+      document.getElementById('reg-error').textContent = e.message;
+    }
+  }
+
+  function logout() {
+    token = '';
+    username = '';
+    localStorage.removeItem('token');
+    localStorage.removeItem('username');
+    reminders = [];
+    showAuth();
+  }
+
+  // ─── REMINDERS ───
+  async function loadReminders() {
+    try {
+      const res = await fetch(`${API}/reminders`, {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      if (res.status === 401) { logout(); return; }
+      reminders = await res.json();
+      renderReminders();
+    } catch (e) {
+      document.getElementById('reminder-list').innerHTML =
+        '<div class="empty-state"><div class="icon">⚠️</div><p>Could not load reminders</p></div>';
+    }
+  }
+
+  function setFilter(f, btn) {
+    currentFilter = f;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderReminders();
+  }
+
+  function renderReminders() {
+    const total   = reminders.length;
+    const pending = reminders.filter(r => r.status === 'PENDING').length;
+    const done    = reminders.filter(r => r.status === 'DONE').length;
+    const high    = reminders.filter(r => r.priority === 'HIGH' && r.status === 'PENDING').length;
+
+    document.getElementById('stat-total').textContent   = total;
+    document.getElementById('stat-pending').textContent = pending;
+    document.getElementById('stat-done').textContent    = done;
+    document.getElementById('stat-high').textContent    = high;
+
+    let filtered = reminders;
+    if (currentFilter === 'PENDING') filtered = reminders.filter(r => r.status === 'PENDING');
+    if (currentFilter === 'DONE')    filtered = reminders.filter(r => r.status === 'DONE');
+    if (currentFilter === 'HIGH')    filtered = reminders.filter(r => r.priority === 'HIGH');
+
+    const list = document.getElementById('reminder-list');
+
+    if (filtered.length === 0) {
+      list.innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>No reminders here. Add one!</p></div>';
+      return;
+    }
+
+    list.innerHTML = filtered.map(r => {
+      const dt = new Date(r.reminderTime);
+      const isOverdue = dt < new Date() && r.status === 'PENDING';
+      const timeStr = dt.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+      const isDone = r.status === 'DONE';
+      return `
+        <div class="reminder-card ${isDone ? 'done' : ''}">
+          <div class="priority-dot ${r.priority}"></div>
+          <div class="reminder-body">
+            <div class="reminder-title ${isDone ? 'done' : ''}">${escHtml(r.title)}</div>
+            ${r.description ? `<div class="reminder-desc">${escHtml(r.description)}</div>` : ''}
+            <div class="reminder-meta">
+              <span class="badge ${r.priority}">${r.priority}</span>
+              <span class="badge ${r.status}">${r.status}</span>
+              <span class="reminder-time ${isOverdue ? 'overdue' : ''}">
+                ${isOverdue ? '⚠ OVERDUE · ' : '🕐 '}${timeStr}
+              </span>
+            </div>
+          </div>
+          <div class="reminder-actions">
+            ${r.status === 'PENDING'
+              ? `<button class="btn-sm accent" onclick="markDone(${r.id})">✓ Done</button>`
+              : `<button class="btn-sm outline" onclick="markPending(${r.id})">↩ Undo</button>`
+            }
+            <button class="btn-sm outline" onclick="showEditModal(${r.id})">✏️</button>
+            <button class="btn-sm red" onclick="deleteReminder(${r.id})">🗑</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  async function markDone(id) {
+    await patchReminder(id, { status: 'DONE' });
+  }
+
+  async function markPending(id) {
+    await patchReminder(id, { status: 'PENDING' });
+  }
+
+  async function patchReminder(id, data) {
+    const res = await fetch(`${API}/reminders/${id}`, {
+      method: 'PUT',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    const updated = await res.json();
+    reminders = reminders.map(r => r.id === id ? updated : r);
+    renderReminders();
+  }
+
+  async function deleteReminder(id) {
+    if (!confirm('Delete this reminder?')) return;
+    await fetch(`${API}/reminders/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    reminders = reminders.filter(r => r.id !== id);
+    renderReminders();
+  }
+
+  // ─── MODAL ───
+  function showAddModal() {
+    editingId = null;
+    document.getElementById('modal-title').textContent = 'New Reminder';
+    document.getElementById('m-title').value = '';
+    document.getElementById('m-desc').value  = '';
+    document.getElementById('m-time').value  = '';
+    document.getElementById('m-priority').value = 'MEDIUM';
+    document.getElementById('modal-save-btn').textContent = 'Save Reminder';
+    document.getElementById('modal-error').textContent = '';
+    document.getElementById('modal-overlay').classList.remove('hidden');
+  }
+
+  function showEditModal(id) {
+    const r = reminders.find(x => x.id === id);
+    if (!r) return;
+    editingId = id;
+    document.getElementById('modal-title').textContent = 'Edit Reminder';
+    document.getElementById('m-title').value = r.title;
+    document.getElementById('m-desc').value  = r.description || '';
+    // Format for datetime-local input
+    const dt = new Date(r.reminderTime);
+    const local = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000)
+      .toISOString().slice(0, 16);
+    document.getElementById('m-time').value = local;
+    document.getElementById('m-priority').value = r.priority;
+    document.getElementById('modal-save-btn').textContent = 'Update Reminder';
+    document.getElementById('modal-error').textContent = '';
+    document.getElementById('modal-overlay').classList.remove('hidden');
+  }
+
+  function closeModal() {
+    document.getElementById('modal-overlay').classList.add('hidden');
+  }
+
+  async function saveReminder() {
+    const title    = document.getElementById('m-title').value.trim();
+    const desc     = document.getElementById('m-desc').value.trim();
+    const timeVal  = document.getElementById('m-time').value;
+    const priority = document.getElementById('m-priority').value;
+    document.getElementById('modal-error').textContent = '';
+
+    if (!title) {
+      document.getElementById('modal-error').textContent = 'Title is required';
+      return;
+    }
+    if (!timeVal) {
+      document.getElementById('modal-error').textContent = 'Date & Time is required';
+      return;
+    }
+
+    const reminderTime = new Date(timeVal).toISOString().slice(0, 19);
+    const payload = { title, description: desc, reminderTime, priority };
+
+    try {
+      if (editingId) {
+        const res = await fetch(`${API}/reminders/${editingId}`, {
+          method: 'PUT',
+          headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const updated = await res.json();
+        reminders = reminders.map(r => r.id === editingId ? updated : r);
+      } else {
+        const res = await fetch(`${API}/reminders`, {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const created = await res.json();
+        reminders.unshift(created);
+      }
+      closeModal();
+      renderReminders();
+    } catch (e) {
+      document.getElementById('modal-error').textContent = 'Error saving reminder';
+    }
+  }
+
+  // Close modal on overlay click
+  document.getElementById('modal-overlay').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+  });
+
+  // Enter key on auth forms
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      if (document.getElementById('login-form').style.display !== 'none') login();
+      else if (document.getElementById('register-form').style.display !== 'none') register();
+    }
+  });
+
+  function escHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+</script>
+</body>
+</html>

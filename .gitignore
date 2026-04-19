@@ -1,0 +1,27 @@
+# Maven build output
+backend/target/
+**/*.class
+**/*.jar
+**/*.war
+
+# Environment secrets
+.env
+*.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.suo
+*.user
+
+# Logs
+*.log
+logs/
+
+# Docker
+docker-compose.override.yml

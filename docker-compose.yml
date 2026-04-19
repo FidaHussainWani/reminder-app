@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+
+  db:
+    image: postgres:15-alpine
+    container_name: reminder_db
+    environment:
+      POSTGRES_DB: reminderdb
+      POSTGRES_USER: reminderuser
+      POSTGRES_PASSWORD: reminderpass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reminderuser -d reminderdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    container_name: reminder_backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/reminderdb
+      SPRING_DATASOURCE_USERNAME: reminderuser
+      SPRING_DATASOURCE_PASSWORD: reminderpass
+    restart: unless-stopped
+
+  frontend:
+    image: nginx:alpine
+    container_name: reminder_frontend
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

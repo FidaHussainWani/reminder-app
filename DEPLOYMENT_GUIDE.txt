@@ -1,0 +1,237 @@
+# ✅ Complete Deployment Guide — RemindMe App
+# Java (Spring Boot) + HTML/CSS/JS + PostgreSQL + Docker + AWS EC2
+
+================================================================
+STEP 1 — PROJECT STRUCTURE (what you should have)
+================================================================
+
+reminder-app/
+├── backend/
+│   ├── Dockerfile
+│   ├── pom.xml
+│   └── src/main/java/com/reminder/
+│       ├── ReminderApplication.java
+│       ├── config/
+│       │   ├── JwtUtil.java
+│       │   ├── JwtFilter.java
+│       │   └── SecurityConfig.java
+│       ├── controller/
+│       │   ├── AuthController.java
+│       │   └── ReminderController.java
+│       ├── model/
+│       │   ├── User.java
+│       │   └── Reminder.java
+│       └── repository/
+│           ├── UserRepository.java
+│           └── ReminderRepository.java
+│   └── src/main/resources/
+│       └── application.properties
+├── frontend/
+│   └── index.html
+├── nginx/
+│   └── default.conf
+└── docker-compose.yml
+
+
+================================================================
+STEP 2 — TEST LOCALLY FIRST (on your own machine)
+================================================================
+
+Open terminal in the reminder-app folder and run:
+
+  docker-compose up --build
+
+Wait about 2-3 minutes for the Java app to compile and start.
+Then open http://localhost in your browser.
+
+You should see the RemindMe login page.
+Test register + create reminders to make sure it works.
+
+To stop:
+  docker-compose down
+
+
+================================================================
+STEP 3 — CREATE AWS EC2 INSTANCE
+================================================================
+
+1. Go to https://aws.amazon.com → sign in
+2. Go to EC2 → Click "Launch Instance"
+3. Fill in:
+   - Name: reminder-app
+   - AMI: Ubuntu 22.04 LTS (free tier eligible)
+   - Instance type: t2.micro (free tier)
+   - Key pair: Click "Create new key pair"
+       Name: reminder-key
+       Type: RSA
+       Format: .pem
+       → Download and SAVE this file safely (you need it to connect)
+   - Network settings → Check these 3 boxes:
+       ✅ Allow SSH traffic from: Anywhere
+       ✅ Allow HTTP traffic from the internet
+       ✅ Allow HTTPS traffic from the internet
+4. Click "Launch Instance"
+
+
+================================================================
+STEP 4 — ASSIGN ELASTIC IP (so IP doesn't change)
+================================================================
+
+1. In EC2 left menu → "Elastic IPs"
+2. Click "Allocate Elastic IP address" → Allocate
+3. Select the new IP → Actions → "Associate Elastic IP address"
+4. Choose your instance (reminder-app) → Associate
+5. NOTE DOWN this IP address (e.g. 54.123.45.67)
+   This is what you give your teacher!
+
+
+================================================================
+STEP 5 — CONNECT TO YOUR EC2 SERVER
+================================================================
+
+On your local machine, open terminal:
+
+  # Give permission to your key file (Linux/Mac)
+  chmod 400 ~/Downloads/reminder-key.pem
+
+  # Connect to server (replace YOUR_ELASTIC_IP)
+  ssh -i ~/Downloads/reminder-key.pem ubuntu@YOUR_ELASTIC_IP
+
+  # On Windows — use Git Bash or PowerShell:
+  ssh -i C:\Users\YourName\Downloads\reminder-key.pem ubuntu@YOUR_ELASTIC_IP
+
+You should now be inside the server.
+
+
+================================================================
+STEP 6 — INSTALL DOCKER ON THE EC2 SERVER
+================================================================
+
+Run these commands ONE BY ONE inside the server:
+
+  sudo apt update
+  sudo apt install -y ca-certificates curl gnupg
+
+  sudo install -m 0755 -d /etc/apt/keyrings
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+  sudo chmod a+r /etc/apt/keyrings/docker.gpg
+
+  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+  sudo apt update
+  sudo apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+  sudo usermod -aG docker ubuntu
+  newgrp docker
+
+Verify:
+  docker --version
+  docker compose version
+
+
+================================================================
+STEP 7 — UPLOAD YOUR PROJECT TO EC2
+================================================================
+
+Open a NEW terminal on your LOCAL machine (not inside SSH).
+
+  # Navigate to where your project is
+  cd /path/to/reminder-app
+
+  # Upload the entire project (replace YOUR_ELASTIC_IP)
+  scp -i ~/Downloads/reminder-key.pem -r . ubuntu@YOUR_ELASTIC_IP:~/reminder-app
+
+On Windows (Git Bash):
+  scp -i C:\Users\YourName\Downloads\reminder-key.pem -r . ubuntu@YOUR_ELASTIC_IP:~/reminder-app
+
+
+================================================================
+STEP 8 — RUN THE APP ON EC2
+================================================================
+
+Go back to the SSH terminal (inside the server):
+
+  cd ~/reminder-app
+  docker compose up --build -d
+
+The -d flag runs it in the background.
+First run takes about 3-4 minutes (downloads + compiles Java).
+
+Check if it's running:
+  docker compose ps
+
+All 3 services (db, backend, frontend) should say "running".
+
+Check logs if something is wrong:
+  docker compose logs backend
+  docker compose logs frontend
+
+
+================================================================
+STEP 9 — VERIFY IT WORKS
+================================================================
+
+Open your browser and go to:
+  http://YOUR_ELASTIC_IP
+
+You should see the RemindMe login page!
+
+Test:
+1. Register a new account
+2. Add some reminders with different priorities
+3. Mark them as done
+4. Try the filters
+
+Share http://YOUR_ELASTIC_IP with your teacher ✅
+
+
+================================================================
+STEP 10 — USEFUL COMMANDS (for later)
+================================================================
+
+# SSH into server anytime
+ssh -i reminder-key.pem ubuntu@YOUR_ELASTIC_IP
+
+# Stop the app
+docker compose down
+
+# Start the app again
+docker compose up -d
+
+# Restart after making changes
+docker compose up --build -d
+
+# View live logs
+docker compose logs -f
+
+# View just backend logs
+docker compose logs -f backend
+
+# Check running containers
+docker ps
+
+# Restart just one service
+docker compose restart backend
+
+
+================================================================
+TROUBLESHOOTING
+================================================================
+
+Problem: Can't access http://YOUR_ELASTIC_IP
+Fix: Check EC2 Security Group → Inbound Rules
+     Make sure port 80 is open for 0.0.0.0/0
+
+Problem: Backend won't start
+Fix: docker compose logs backend
+     Usually the DB needs more time. Run:
+     docker compose restart backend
+
+Problem: "Connection refused" on SSH
+Fix: Make sure you're using the right .pem file and IP
+     Check the instance is in "running" state in EC2
+
+Problem: App works but data disappears on restart
+Fix: This is normal if you deleted volumes. Your docker-compose.yml
+     uses a named volume (postgres_data) so data persists across
+     docker compose restart. Only "docker compose down -v" removes data.
